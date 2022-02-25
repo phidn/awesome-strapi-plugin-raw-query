@@ -1,14 +1,9 @@
-const { ApplicationError, ValidationError } = require('@strapi/utils').errors
+'use strict';
 
 module.exports = {
   async execute(ctx) {
-    const roleCode = ctx.state.user?.roles[0]?.code
-    if(roleCode !== 'strapi-super-admin') {
-      throw new ValidationError('role.invalid')
-    }
-
     const {code} = ctx.request.body;
-    
+
     let queries = code.replace(/^\s+/gm, "").split(';').map(query => {
       return query.replace(/\r?\n|\r/, "");
     }).slice(0, -1);

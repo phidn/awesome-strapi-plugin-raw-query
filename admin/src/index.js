@@ -2,20 +2,19 @@ import { prefixPluginTranslations } from '@strapi/helper-plugin';
 import pluginPkg from '../../package.json';
 import pluginId from './pluginId';
 import Initializer from './components/Initializer';
-import PluginIcon from './components/PluginIcon';
 
 const pluginDescription = pluginPkg.strapi.description || pluginPkg.description;
-const icon = pluginPkg.strapi.icon;
+import IconCode from '@strapi/icons/Code';
 const name = pluginPkg.strapi.name;
 
 export default {
   register(app) {
     app.addMenuLink({
       to: `/plugins/${pluginId}`,
-      icon: PluginIcon,
+      icon: IconCode,
       intlLabel: {
         id: `${pluginId}.plugin.name`,
-        defaultMessage: name,
+        defaultMessage: pluginPkg.strapi.displayName,
       },
       Component: async () => {
         const component = await import(/* webpackChunkName: "[request]" */ './pages/App');
@@ -32,7 +31,7 @@ export default {
     });
     app.registerPlugin({
       description: pluginDescription,
-      icon,
+      icon: IconCode,
       id: pluginId,
       initializer: Initializer,
       isReady: false,

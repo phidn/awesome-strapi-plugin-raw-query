@@ -1,29 +1,20 @@
-/*
- *
- * HomePage
- *
- */
 import './index.css';
 
-import React, {memo, useEffect, useState} from 'react';
-// import PropTypes from 'prop-types';
+import { join } from 'path';
+import React, {memo, useState} from 'react';
 import {ContentLayout, HeaderLayout} from '@strapi/design-system/Layout';
 import pluginId from '../../pluginId';
 import getTrad from '../../utils/getTrad';
 import {request, useNotification} from '@strapi/helper-plugin';
-// import {Divider, Button, Box, Table, Thead, Tbody, TableLabel, Tr, Th, Td, Text} from '@strapi/design-system';
-import { Divider } from '@strapi/design-system/Divider';
-import { Button } from '@strapi/design-system/Button';
-import { Box } from '@strapi/design-system/Box';
-import { Table, Thead, Tbody, Tr, Th, Td } from '@strapi/design-system/Table';
-import { Typography } from '@strapi/design-system/Typography'
+import {Divider, Button, Box, Table, Thead, Tbody, TableLabel, Tr, Th, Td, Text} from '@strapi/design-system';
 
-import Editor from "@monaco-editor/react";
-// import {JsonToTable} from "react-json-to-table";
-import isEqual from "lodash/isEqual";
-import upperFirst from "lodash/upperFirst";
+import {UnControlled as CodeMirror} from 'react-codemirror2';
+import 'codemirror/lib/codemirror.css';
+import 'codemirror/theme/dracula.css';
+require('codemirror/mode/sql/sql');
 
 import * as pkg from '../../../../package.json';
+import _ from 'lodash'
 
 const HomePage = () => {
 
@@ -38,7 +29,7 @@ const HomePage = () => {
   const [tableData, setTableData] = useState([]);
   const [executing, setExecuting] = useState(false);
 
-  const onMount = (editor, monaco) => {
+  const editorDidMount = (editor, monaco) => {
     const code = window.localStorage.getItem(`${pluginId}_code`);
     if (code && code.length) {
       setCode(code);
@@ -47,9 +38,9 @@ const HomePage = () => {
     editor.focus();
   }
 
-  const onChange = (newValue, e) => {
-    window.localStorage.setItem(`${pluginId}_code`, newValue);
-    setCode(newValue);
+  const onChange = (editor, data, value) => {
+    window.localStorage.setItem(`${pluginId}_code`, value);
+    setCode(value);
   }
 
   const executeQuery = async () => {
@@ -85,43 +76,24 @@ const HomePage = () => {
     }
   }
 
-  const getTableHeaders = (data) => {
-    let headers = [];
-    for (const dataKey in data) {
-      headers.push(dataKey);
-    }
-    return headers;
-  }
-
-  const getTableRows = (data) => {
-    let rows = [];
-    data.forEach(d => {
-      let r = [];
-      for (const dk in d) {
-        r.push(d[dk]);
-      }
-      rows.push(r);
-    });
-    console.log('→ getTableRows :>>', rows);
-    return rows;
-  }
-
   return (
     <>
       <div className={'raw-query'}>
         <HeaderLayout
           id="title"
-          title={pkg.strapi.name}
+          title={pkg.strapi.displayName}
           subtitle={pkg.strapi.description}
         />
         <ContentLayout>
-          <Editor
+          <CodeMirror
             height="200px"
-            theme="vs-dark"
-            defaultLanguage="sql"
-            options={{fontSize: '14px'}}
-            defaultValue={code}
-            onMount={onMount}
+            value={code}
+            options={{
+              mode: 'sql',
+              theme: 'dracula',
+              lineNumbers: true
+            }}
+            editorDidMount={editorDidMount}
             onChange={onChange}
           />
           <Button
@@ -134,7 +106,6 @@ const HomePage = () => {
           </Button>
           <div style={{overflow: 'auto', margin: '24px 0px'}}>
             {tableData.length ? tableData.map((data, index) => {
-              console.log(`→ data[${index}] :>>`, data)
               if (data.result.rows.length) {
                 return (
                   <div key={'table_' + index} className={'raw-query_query'}>
@@ -142,15 +113,15 @@ const HomePage = () => {
                     <div className="code">
                       <pre>{data.query};</pre>
                     </div>
-                    {/* <Box> */}
-                      <Table colCount={getTableHeaders(data.result.rows).length} rowCount={data.result.rows.length}>
+                    <Box>
+                      <Table colCount={data.result.fields.length} rowCount={data.result.rows.length}>
                         <Thead>
                           <Tr>
                             {
-                              getTableHeaders(data.result.rows[0]).map((th, index) => {
+                              data.result.fields.map((th, index) => {
                                 return (
                                   <Th style={{padding: '16px'}} key={'th_' + index}>
-                                    <Typography variant="sigma">{th}</Typography>
+                                    <TableLabel>{th.name}</TableLabel>
                                   </Th>
                                 )
                               })
@@ -159,14 +130,18 @@ const HomePage = () => {
                         </Thead>
                         <Tbody>
                           {
-                            getTableRows(data.result.rows).map((tr, index) => {
+                            data.result.rows.map((row, index) => {
                               return (
-                                <Tr key={'tr_' + index}>
+                                <Tr key={'row_' + index}>
                                   {
-                                    tr.map((td, index) => {
+                                    data.result.fields.map((field, index_2) => {
                                       return (
-                                        <Td style={{padding: '16px'}} key={'td_' + index}>
-                                          <Typography textColor="neutral800">{td}</Typography>
+                                        <Td style={{padding: '16px'}} key={'td_' + index_2}>
+                                          <Text>{
+                                            _.isString(row[field.name])
+                                            ? row[field.name]
+                                            : JSON.stringify(row[field.name])
+                                          }</Text>
                                         </Td>
                                       )
                                     })
@@ -177,11 +152,12 @@ const HomePage = () => {
                           }
                         </Tbody>
                       </Table>
-                    {/* </Box> */}
+                    </Box>
                     <Divider/>
                   </div>
                 )
               } else {
+                console.log('2', data.result)
                 return (
                   <div className={'raw-query_query'}>
                     <p><b>Query:</b><small>{data.result.rows.length} Results</small></p>
